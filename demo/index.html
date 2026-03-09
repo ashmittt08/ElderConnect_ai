@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElderConnect — Voice Assistant Preview</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #eef2ff;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Phone frame ── */
+    .phone {
+      background: #f5f7ff;
+      border-radius: 36px;
+      box-shadow: 0 24px 64px rgba(26,115,232,0.18), 0 4px 16px rgba(0,0,0,0.12);
+      width: 375px;
+      min-height: 700px;
+      overflow: hidden;
+      padding: 56px 24px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    /* ── Status bar notch ── */
+    .notch {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 44px;
+      background: #1a1a2e;
+      border-radius: 36px 36px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .notch-pill {
+      width: 100px;
+      height: 18px;
+      background: #0d0d1a;
+      border-radius: 9px;
+    }
+
+    /* ── Server URL bar ── */
+    .server-bar {
+      width: 100%;
+      background: #fff;
+      border: 2px solid #c7d7fc;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .server-bar label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      white-space: nowrap;
+    }
+    .server-bar input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      color: #1a1a2e;
+      background: transparent;
+    }
+    .server-bar button {
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .server-bar button:hover { background: #1558b0; }
+
+    /* ── Title ── */
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #666;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    /* ── Error box ── */
+    .error-box {
+      background: #ffebee;
+      border-left: 4px solid #d32f2f;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      width: 100%;
+      display: none;
+    }
+    .error-box.visible { display: block; }
+    .error-box p {
+      color: #b71c1c;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    /* ── Mic button ── */
+    .mic-btn {
+      width: 150px;
+      height: 150px;
+      border-radius: 75px;
+      background: #1a73e8;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 28px;
+      box-shadow: 0 6px 24px rgba(26,115,232,0.45);
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      user-select: none;
+    }
+    .mic-btn:active { transform: scale(0.96); }
+    .mic-btn.listening {
+      background: #d32f2f;
+      box-shadow: 0 6px 24px rgba(211,47,47,0.45);
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 6px 24px rgba(211,47,47,0.45); }
+      50% { box-shadow: 0 6px 40px rgba(211,47,47,0.7); }
+    }
+    .mic-btn span.icon { font-size: 56px; }
+    .mic-btn span.label {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+      text-align: center;
+      line-height: 1.3;
+    }
+
+    /* ── Processing spinner ── */
+    .processing {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .processing.visible { display: flex; }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 5px solid #c7d7fc;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .processing p {
+      margin-top: 14px;
+      font-size: 17px;
+      color: #1a73e8;
+      font-weight: 600;
+    }
+
+    /* ── Speech box ── */
+    .speech-box {
+      background: #fff;
+      border: 2px solid #1a73e8;
+      border-radius: 16px;
+      padding: 18px;
+      width: 100%;
+      margin-bottom: 18px;
+      display: none;
+    }
+    .speech-box.visible { display: block; }
+    .speech-box .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1a73e8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .speech-box p {
+      font-size: 20px;
+      color: #1a1a2e;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    /* ── Interim (greyed) speech ── */
+    .speech-box p .interim {
+      color: #999;
+      font-style: italic;
+    }
+
+    /* ── Confirm box ── */
+    .confirm-box {
+      background: #fff;
+      border-radius: 20px;
+      padding: 22px;
+      width: 100%;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+      display: none;
+    }
+    .confirm-box.visible { display: block; }
+    .confirm-box h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a2e;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+    .info-row {
+      display: flex;
+      margin-bottom: 12px;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .info-label {
+      font-size: 15px;
+      font-weight: 700;
+      color: #666;
+      min-width: 90px;
+    }
+    .info-value {
+      font-size: 17px;
+      color: #1a1a2e;
+      font-weight: 600;
+    }
+    .info-value.urgent { color: #d32f2f; }
+    .info-value.high   { color: #e65100; }
+
+    /* ── Buttons ── */
+    .create-btn {
+      width: 100%;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 18px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: background 0.2s;
+    }
+    .create-btn:hover { background: #1558b0; }
+
+    .cancel-btn {
+      background: #fff;
+      color: #d32f2f;
+      border: 2px solid #d32f2f;
+      border-radius: 14px;
+      padding: 14px 36px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+    .cancel-btn:hover { background: #ffebee; }
+
+    /* ── Success toast ── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a2e;
+      color: #fff;
+      border-radius: 14px;
+      padding: 16px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 100;
+      text-align: center;
+      max-width: 320px;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Demo note ── */
+    .demo-note {
+      margin-top: 20px;
+      background: #fffde7;
+      border: 1.5px solid #f9a825;
+      border-radius: 12px;
+      padding: 12px 16px;
+      width: 100%;
+      font-size: 13px;
+      color: #5d4037;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ── Saved requests panel ── */
+    .saved-panel {
+      width: 100%;
+      margin-top: 18px;
+      display: none;
+    }
+    .saved-panel.visible { display: block; }
+    .saved-panel h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .saved-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      border-left: 4px solid #1a73e8;
+      font-size: 13px;
+    }
+    .saved-card .sc-summary { font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .saved-card .sc-meta { color: #888; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-daily_help  { background: #e8f5e9; color: #2e7d32; }
+    .badge-medical     { background: #e3f2fd; color: #1565c0; }
+    .badge-emergency   { background: #ffebee; color: #c62828; }
+    .badge-social      { background: #f3e5f5; color: #6a1b9a; }
+    .badge-transport   { background: #fff3e0; color: #e65100; }
+    .badge-other       { background: #f5f5f5; color: #616161; }
+
+    /* ── Responsive ── */
+    @media (max-width: 420px) {
+      .phone { width: 100%; border-radius: 0; box-shadow: none; padding: 52px 16px 32px; }
+      body { padding: 0; background: #f5f7ff; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status bar notch -->
+  <div class="notch"><div class="notch-pill"></div></div>
+
+  <!-- Server URL bar -->
+  <div class="server-bar">
+    <label>Backend:</label>
+    <input id="serverUrl" type="text" value="http://localhost:3000" />
+    <button onclick="checkServer()">Connect</button>
+  </div>
+
+  <!-- Title -->
+  <p class="title">🎙️ Voice Assistant</p>
+  <p class="subtitle">Tap the button and speak your request</p>
+
+  <!-- Error box -->
+  <div id="errorBox" class="error-box">
+    <p id="errorText"></p>
+  </div>
+
+  <!-- Mic button -->
+  <button id="micBtn" class="mic-btn" onclick="handleMicPress()" aria-label="Tap to speak">
+    <span class="icon" id="micIcon">🎤</span>
+    <span class="label" id="micLabel">Tap to Speak</span>
+  </button>
+
+  <!-- Processing -->
+  <div id="processing" class="processing">
+    <div class="spinner"></div>
+    <p>Understanding your request…</p>
+  </div>
+
+  <!-- Recognised speech -->
+  <div id="speechBox" class="speech-box">
+    <div class="label">You said:</div>
+    <p id="speechText"></p>
+  </div>
+
+  <!-- Confirm box -->
+  <div id="confirmBox" class="confirm-box">
+    <h3>Request Summary</h3>
+    <div class="info-row">
+      <span class="info-label">Category:</span>
+      <span class="info-value" id="resCategory"></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Priority:</span>
+      <span class="info-value" id="resPriority"></span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Summary:</span>
+      <span class="info-value" id="resSummary"></span>
+    </div>
+    <button class="create-btn" onclick="handleCreateRequest()">✅  Create Request</button>
+  </div>
+
+  <!-- Cancel button -->
+  <button id="cancelBtn" class="cancel-btn" onclick="handleCancel()" style="display:none;">
+    ✕  Cancel
+  </button>
+
+  <!-- Saved requests -->
+  <div id="savedPanel" class="saved-panel">
+    <h4>📋 Saved Requests (demo)</h4>
+    <div id="savedList"></div>
+  </div>
+
+  <!-- Demo note -->
+  <div class="demo-note">
+    💡 <strong>Demo mode:</strong> Uses rule-based AI (no OpenAI key) and in-memory storage.
+    Start <code>node backend/demo-server.js</code> first, then open this page.
+    <br /><br />
+    🎙️ Voice works in Chrome/Edge (desktop). If your browser blocks microphone access, type in the text box that appears.
+  </div>
+</div>
+
+<!-- Success toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  const ELDER_ID = 'elder_demo_001';
+  let state = 'idle'; // idle | listening | processing | confirm
+  let spokenText = '';
+  let aiResult = null;
+  let recognition = null;
+
+  const CATEGORY_LABEL = {
+    daily_help: 'Daily Help', medical: 'Medical', emergency: 'Emergency',
+    social: 'Social', transport: 'Transport', other: 'Other',
+  };
+  const PRIORITY_LABEL = {
+    low: 'Low', medium: 'Medium', high: 'High', urgent: '🚨 Urgent',
+  };
+
+  function serverUrl() {
+    return (document.getElementById('serverUrl').value || 'http://localhost:3000').replace(/\/$/, '');
+  }
+
+  // ── DOM helpers ────────────────────────────────────────────────────────────
+  function show(id) { document.getElementById(id).style.display = ''; }
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+  function addClass(id, cls) { document.getElementById(id).classList.add(cls); }
+  function removeClass(id, cls) { document.getElementById(id).classList.remove(cls); }
+  function hasClass(id, cls) { return document.getElementById(id).classList.contains(cls); }
+
+  function showError(msg) {
+    document.getElementById('errorText').textContent = msg;
+    addClass('errorBox', 'visible');
+  }
+  function clearError() { removeClass('errorBox', 'visible'); }
+
+  function updateMic(listening) {
+    document.getElementById('micIcon').textContent = listening ? '⏹' : '🎤';
+    document.getElementById('micLabel').textContent = listening ? 'Stop\nListening' : 'Tap to Speak';
+    if (listening) addClass('micBtn', 'listening');
+    else removeClass('micBtn', 'listening');
+  }
+
+  // ── Server health check ────────────────────────────────────────────────────
+  async function checkServer() {
+    try {
+      const r = await fetch(`${serverUrl()}/health`);
+      const d = await r.json();
+      showToast(`✅ Connected to demo server (${d.mode || 'ok'})`);
+      clearError();
+    } catch {
+      showError('Cannot reach the backend. Make sure demo-server.js is running on the URL above.');
+    }
+  }
+
+  // ── Web Speech API setup ───────────────────────────────────────────────────
+  function setupRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+
+    const rec = new SpeechRecognition();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+
+    rec.onresult = (e) => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      const display = (final + (interim ? `<span class="interim">${interim}</span>` : ''));
+      document.getElementById('speechText').innerHTML = display || '…';
+      addClass('speechBox', 'visible');
+      if (final) spokenText = final.trim();
+    };
+
+    rec.onerror = (e) => {
+      console.warn('Speech error', e.error);
+      if (e.error === 'not-allowed') {
+        showError('Microphone access denied. Please allow microphone access in your browser, or type your request below.');
+        injectTextFallback();
+      } else {
+        showError('Voice recognition failed. Try the text fallback below or reload the page.');
+        injectTextFallback();
+      }
+      resetToIdle();
+    };
+
+    rec.onend = () => {
+      if (state === 'listening') handleStopListening();
+    };
+
+    return rec;
+  }
+
+  // ── Text fallback (when mic not available) ─────────────────────────────────
+  function injectTextFallback() {
+    if (document.getElementById('textFallback')) return;
+    const el = document.createElement('div');
+    el.id = 'textFallback';
+    el.style.cssText = 'width:100%;margin-bottom:16px;';
+    el.innerHTML = `
+      <div style="background:#fff;border:2px solid #1a73e8;border-radius:14px;padding:14px;width:100%;">
+        <div style="font-size:12px;font-weight:700;color:#1a73e8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Type your request:</div>
+        <textarea id="textInput" rows="3"
+          style="width:100%;border:1.5px solid #c7d7fc;border-radius:8px;padding:10px;font-size:16px;resize:none;outline:none;font-family:inherit;"
+          placeholder="e.g. I need someone to buy groceries for me"></textarea>
+        <button onclick="handleTypedText()"
+          style="margin-top:10px;width:100%;background:#1a73e8;color:#fff;border:none;border-radius:10px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;">
+          🤖 Process Request
+        </button>
+      </div>`;
+    const phone = document.querySelector('.phone');
+    phone.insertBefore(el, document.getElementById('cancelBtn'));
+  }
+
+  async function handleTypedText() {
+    const input = document.getElementById('textInput');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) { showError('Please type your request first.'); return; }
+    spokenText = text;
+    document.getElementById('speechText').innerHTML = text;
+    addClass('speechBox', 'visible');
+    await processText(text);
+  }
+
+  // ── Main flow ──────────────────────────────────────────────────────────────
+  function handleMicPress() {
+    if (state === 'idle') handleStartListening();
+    else if (state === 'listening') handleStopListening();
+  }
+
+  function handleStartListening() {
+    clearError();
+    spokenText = '';
+    aiResult = null;
+    removeClass('speechBox', 'visible');
+    removeClass('confirmBox', 'visible');
+    hide('cancelBtn');
+    hide('processing');
+
+    recognition = setupRecognition();
+    if (!recognition) {
+      showError('Your browser does not support speech recognition. Please use Chrome or Edge, or use the text fallback below.');
+      injectTextFallback();
+      return;
+    }
+
+    try {
+      recognition.start();
+      state = 'listening';
+      updateMic(true);
+      show('cancelBtn');
+    } catch (e) {
+      showError('Could not start microphone. Try the text fallback below.');
+      injectTextFallback();
+    }
+  }
+
+  function handleStopListening() {
+    if (recognition) { try { recognition.stop(); } catch (_) {} }
+    state = 'idle';
+    updateMic(false);
+
+    if (!spokenText.trim()) {
+      showError('No speech detected. Try again or use the text fallback below.');
+      injectTextFallback();
+      hide('cancelBtn');
+      return;
+    }
+    processText(spokenText);
+  }
+
+  async function processText(text) {
+    state = 'processing';
+    clearError();
+    show('processing');
+    addClass('processing', 'visible');
+    hide('micBtn');
+    hide('cancelBtn');
+
+    try {
+      const res = await fetch(`${serverUrl()}/ai/process-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      aiResult = await res.json();
+
+      // Populate confirm box
+      document.getElementById('resCategory').textContent = CATEGORY_LABEL[aiResult.category] || aiResult.category;
+      const prioEl = document.getElementById('resPriority');
+      prioEl.textContent = PRIORITY_LABEL[aiResult.priority] || aiResult.priority;
+      prioEl.className = 'info-value ' + aiResult.priority;
+      document.getElementById('resSummary').textContent = aiResult.request_summary;
+
+      hide('processing');
+      removeClass('processing', 'visible');
+      addClass('confirmBox', 'visible');
+      show('cancelBtn');
+      state = 'confirm';
+    } catch (err) {
+      console.error(err);
+      showError('Could not reach the backend. Make sure the demo server is running.');
+      resetToIdle();
+    }
+  }
+
+  async function handleCreateRequest() {
+    if (!aiResult) return;
+    state = 'processing';
+    removeClass('confirmBox', 'visible');
+    hide('cancelBtn');
+    show('processing');
+    addClass('processing', 'visible');
+
+    try {
+      const res = await fetch(`${serverUrl()}/ai/create-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          elderId: ELDER_ID,
+          requestText: spokenText,
+          category: aiResult.category,
+          priority: aiResult.priority,
+          request_summary: aiResult.request_summary,
+        }),
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const saved = await res.json();
+
+      hide('processing');
+      removeClass('processing', 'visible');
+      showToast('✅ Request submitted! A volunteer will assist you shortly.');
+      resetToIdle();
+      await refreshSavedRequests();
+    } catch (err) {
+      console.error(err);
+      showError('Failed to submit request. Is the demo server running?');
+      hide('processing');
+      removeClass('processing', 'visible');
+      addClass('confirmBox', 'visible');
+      show('cancelBtn');
+      state = 'confirm';
+    }
+  }
+
+  function handleCancel() {
+    if (recognition) { try { recognition.abort(); } catch (_) {} }
+    resetToIdle();
+    clearError();
+  }
+
+  function resetToIdle() {
+    state = 'idle';
+    spokenText = '';
+    aiResult = null;
+    updateMic(false);
+    show('micBtn');
+    hide('cancelBtn');
+    hide('processing');
+    removeClass('processing', 'visible');
+    removeClass('speechBox', 'visible');
+    removeClass('confirmBox', 'visible');
+  }
+
+  // ── Saved requests refresh ─────────────────────────────────────────────────
+  async function refreshSavedRequests() {
+    try {
+      const res = await fetch(`${serverUrl()}/ai/requests/pending`);
+      const list = await res.json();
+      const container = document.getElementById('savedList');
+      container.innerHTML = '';
+      if (list.length === 0) {
+        container.innerHTML = '<p style="color:#999;font-size:13px;">No pending requests yet.</p>';
+      } else {
+        list.forEach((r) => {
+          const card = document.createElement('div');
+          card.className = 'saved-card';
+          card.innerHTML = `
+            <div class="sc-summary">${r.requestSummary || r.requestText}</div>
+            <div class="sc-meta">
+              <span class="badge badge-${r.category}">${CATEGORY_LABEL[r.category] || r.category}</span>
+              &nbsp;${PRIORITY_LABEL[r.priority] || r.priority}
+              &nbsp;·&nbsp;${new Date(r.createdAt).toLocaleTimeString()}
+            </div>`;
+          container.appendChild(card);
+        });
+      }
+      addClass('savedPanel', 'visible');
+    } catch (_) { /* ignore */ }
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+  function showToast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3500);
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    // Auto-check server connection
+    checkServer().catch(() => {});
+    // Load any existing pending requests
+    refreshSavedRequests().catch(() => {});
+  });
+</script>
+</body>
+</html>
