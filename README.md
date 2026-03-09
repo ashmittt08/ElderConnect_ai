@@ -4,6 +4,39 @@ An **AI-powered Voice Assistant** that lets elderly users request help by speaki
 
 ---
 
+## 🚀 Quick Preview (zero setup — no MongoDB, no OpenAI key)
+
+The fastest way to see the app in action is a two-step process:
+
+**Step 1 — start the demo backend** (in-memory storage, rule-based AI):
+
+```bash
+cd backend
+npm install
+node demo-server.js
+# → Listening on http://localhost:3000
+```
+
+**Step 2 — open the browser demo**:
+
+Open `demo/index.html` directly in Chrome or Edge (double-click the file, or drag it into the browser).
+
+That's it. You'll see the full Voice Assistant UI inside a phone frame. Click **"Tap to Speak"** and say something like:
+
+- *"I need someone to buy groceries for me"*
+- *"Please pick up my blood pressure medicine from the pharmacy"*
+- *"I fell and I cannot get up"*
+
+The demo processes your speech, shows you the AI result (category + priority + summary), and lets you confirm and save the request — all running locally with no external services.
+
+> **Browser note:** Voice recognition works in Chrome and Edge on desktop. If your browser blocks microphone access, a text input box will appear automatically so you can type your request instead.
+
+| Idle screen | After speaking — AI confirmation |
+|:-----------:|:--------------------------------:|
+| ![Idle screen](https://github.com/user-attachments/assets/95ba382e-9ada-4793-bc4e-da0e80fa7ac3) | ![Confirm screen](https://github.com/user-attachments/assets/aef424b0-5a2a-4939-907d-279de71a2edf) |
+
+---
+
 ## Project Structure
 
 ```
@@ -113,25 +146,38 @@ Returns all pending requests so volunteers can respond.
 
 ## Getting Started
 
-### Backend
+### Option A — Demo (no external accounts needed)
 
 ```bash
 cd backend
-cp .env.example .env          # add your MONGODB_URI and OPENAI_API_KEY
 npm install
-npm run dev                   # starts on http://localhost:3000
-npm test                      # run Jest tests
+node demo-server.js        # http://localhost:3000 — no MongoDB or OpenAI required
 ```
 
-### Frontend
+Then open `demo/index.html` in Chrome or Edge.
+
+### Option B — Full stack (real MongoDB + OpenAI)
+
+#### Backend
+
+```bash
+cd backend
+cp .env.example .env       # fill in MONGODB_URI and OPENAI_API_KEY
+npm install
+npm run dev                # starts on http://localhost:3000
+npm test                   # run Jest tests (15 tests, no external services needed)
+```
+
+#### Frontend (React Native / Expo)
 
 ```bash
 cd frontend
 npm install
-npx expo start                # opens Expo DevTools
+npx expo start             # opens Expo DevTools
+# scan the QR code with Expo Go on your phone, or press 'w' for the web preview
 ```
 
-> **Note:** Update `EXPO_PUBLIC_API_URL` in your environment (or the `BASE_URL` constant in `services/api.ts`) to point at your running backend.
+> **Note:** Set `EXPO_PUBLIC_API_URL` in your shell (or edit `BASE_URL` in `frontend/services/api.ts`) to point at your running backend, e.g. `http://192.168.1.100:3000`.
 
 ---
 
